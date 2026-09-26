@@ -329,6 +329,15 @@ class TestStatusBarFieldConfig:
         assert "🗜️" not in text
         assert "%" not in text
 
+    def test_model_always_shows_reasoning_effort(self):
+        cli_obj = _make_cli()
+        with patch.object(cli_mod, "CLI_CONFIG", {"agent": {}}):
+            text = cli_obj._build_status_bar_text(width=120)
+        assert "claude-sonnet-4-20250514 default" in text
+        with patch.object(cli_mod, "CLI_CONFIG", {"agent": {"reasoning_effort": "high"}}):
+            text = cli_obj._build_status_bar_text(width=120)
+        assert "claude-sonnet-4-20250514 high" in text
+
 
 
 
@@ -375,7 +384,7 @@ class TestStatusBarFieldConfig:
 
 
 class TestCacheHitRate:
-    def test_cache_hit_rate_shown_in_wide_terminal(self):
+    def test_cache_hit_rate_hidden_by_default_in_wide_terminal(self):
         cli_obj = _attach_agent(
             _make_cli(),
             prompt_tokens=10_000,
@@ -390,6 +399,22 @@ class TestCacheHitRate:
 
         text = cli_obj._build_status_bar_text(width=120)
 
+        assert "◎" not in text
+        assert cli_obj._get_status_bar_snapshot()["cache_hit_pct"] == 76.0
+
+    def test_cache_hit_rate_can_be_enabled_with_fields_config(self):
+        cli_obj = _attach_agent(
+            _make_cli(),
+            prompt_tokens=10_000, completion_tokens=2_000, total_tokens=12_000,
+            api_calls=5, context_tokens=12_000, context_length=200_000,
+            cache_read_tokens=7_600, cache_write_tokens=0,
+        )
+        with patch.object(
+            cli_mod,
+            "CLI_CONFIG",
+            {"display": {"status_bar": {"fields": ["model", "cache_hit"]}}},
+        ):
+            text = cli_obj._build_status_bar_text(width=120)
         assert "◎ 76.0%" in text
 
 
@@ -412,7 +437,7 @@ class TestCacheHitRate:
 
 
 
-    def test_cache_hit_rate_with_anthropic_style_cache(self):
+    def test_anthropic_cache_metric_is_computed_but_hidden(self):
         """Anthropic has both cache_read and cache_write"""
         cli_obj = _attach_agent(
             _make_cli(),
@@ -429,7 +454,8 @@ class TestCacheHitRate:
         text = cli_obj._build_status_bar_text(width=120)
 
         # cache_read / prompt_tokens = 5000 / 10000 = 50%
-        assert "◎ 50.0%" in text
+        assert "◎" not in text
+        assert cli_obj._get_status_bar_snapshot()["cache_hit_pct"] == 50.0
 
 
 class TestRollingLatencyVelocity:
@@ -449,8 +475,11 @@ class TestRollingLatencyVelocity:
 
         text = cli_obj._build_status_bar_text(width=140)
 
-        assert "\u25f7 3.0s" in text           # mean latency (2+4)/2
-        assert "\u2191 50 t/s" in text          # true throughput 300/6.0
+        assert "\u25f7" not in text
+        assert "t/s" not in text
+        snapshot = cli_obj._get_status_bar_snapshot()
+        assert snapshot["avg_latency"] == 3.0
+        assert snapshot["avg_velocity"] == 50.0
 
     def test_latency_hidden_without_history(self):
         cli_obj = _attach_agent(

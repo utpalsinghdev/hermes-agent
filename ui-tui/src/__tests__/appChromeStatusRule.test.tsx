@@ -116,6 +116,8 @@ describe('StatusRule model label', () => {
       textContent(StatusRule({ ...baseProps, modelReasoningEffort: 'high', modelReasoningEffortWire: 'high' }))
     ).toContain('opus 4.8 high')
     expect(textContent(StatusRule({ ...baseProps, modelReasoningEffort: 'ultra' }))).toContain('opus 4.8 ultra')
+    expect(textContent(StatusRule({ ...baseProps }))).toContain('opus 4.8 default')
+    expect(textContent(StatusRule({ ...baseProps, modelReasoningEffort: 'medium' }))).toContain('opus 4.8 medium')
   })
 })
 
@@ -185,6 +187,7 @@ describe('StatusRule background-subagent indicator', () => {
   it('spells out the auto-resume hint when idle with subagents in flight', () => {
     const element = StatusRule({
       ...baseProps,
+      cols: 160,
       usage: { ...baseProps.usage, active_subagents: 1 }
     })
 
@@ -436,13 +439,13 @@ describe('StatusRule perf read-outs (cache hit / latency / tps)', () => {
     output: 500
   }
 
-  it('renders all three segments on a wide terminal', () => {
+  it('hides all three performance segments by default', () => {
     const element = StatusRule({ ...baseProps, cols: 160, usage: perfUsage })
     const rendered = textContent(element)
 
-    expect(rendered).toContain('◎ 87%')
-    expect(rendered).toContain('◷ 3.2s')
-    expect(rendered).toContain('↑ 50 t/s')
+    expect(rendered).not.toContain('◎ 87%')
+    expect(rendered).not.toContain('◷ 3.2s')
+    expect(rendered).not.toContain('↑ 50 t/s')
   })
 
   it('self-hides when the server omits the keys', () => {
@@ -458,15 +461,15 @@ describe('StatusRule perf read-outs (cache hit / latency / tps)', () => {
     const element = StatusRule({
       ...baseProps,
       cols: 160,
-      statusBarFields: new Set(['model', 'context_pct', 'cache_hit']),
+      statusBarFields: new Set(['model', 'context_pct', 'cache_hit', 'latency', 'tps']),
       usage: perfUsage
     })
 
     const rendered = textContent(element)
 
     expect(rendered).toContain('◎ 87%')
-    expect(rendered).not.toContain('◷')
-    expect(rendered).not.toContain('t/s')
+    expect(rendered).toContain('◷ 3.2s')
+    expect(rendered).toContain('↑ 50 t/s')
   })
 
   it('hides the session title badge when the fields filter omits title', () => {

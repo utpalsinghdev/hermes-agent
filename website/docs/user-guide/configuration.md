@@ -2312,7 +2312,7 @@ Supported fields: `model`, `context_detail` (used/total tokens), `context_pct` (
 
 Notes:
 
-- An empty list (the default) keeps the standard set — everything except `total_tokens` and `git_branch`.
+- An empty list (the default) keeps the standard set, with `cache_hit`, `latency`, and `tps` hidden in CLI/TUI. Add those fields explicitly to show them. `total_tokens` and `git_branch` are also opt-in.
 - The config controls **visibility, not order**; fields render in their built-in positions.
 - Narrow terminals still drop wide-mode-only fields (`context_detail`, `cache_hit`, `latency`, `tps`, `prompt_elapsed`, `idle_since`) regardless of config (`cache_hit` also shows in the medium ≥52-col tier).
 - `latency`/`tps` stay hidden until API calls have been recorded (e.g. the Codex app-server backend reports no latency).

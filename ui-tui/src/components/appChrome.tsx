@@ -316,6 +316,8 @@ export interface StatusBarSegments {
   voice: boolean
 }
 
+const DEFAULT_HIDDEN_STATUS_FIELDS = new Set(['cache_hit', 'latency', 'tps'])
+
 export function statusBarSegments(cols: number): StatusBarSegments {
   const w = Math.max(1, Math.floor(cols || 1))
 
@@ -450,8 +452,8 @@ const effortLabel = (effort?: string, wire?: string) => {
     .trim()
     .toLowerCase()
 
-  if (!value || value === 'medium' || value === 'normal' || value === 'default') {
-    return ''
+  if (!value || value === 'default') {
+    return 'default'
   }
 
   return sent && sent !== value ? `${value}→${sent}` : value
@@ -528,8 +530,9 @@ export function StatusRule({
   const segs = statusBarSegments(cols)
 
   // display.status_bar.fields visibility gate (same key + names as the
-  // classic CLI bar). null = user hasn't customized → everything shows.
-  const ok = (name: string) => statusBarFields === null || statusBarFields.has(name)
+  // classic CLI bar). null = built-in defaults, with perf read-outs hidden.
+  const ok = (name: string) =>
+    statusBarFields === null ? !DEFAULT_HIDDEN_STATUS_FIELDS.has(name) : statusBarFields.has(name)
 
   // On narrow terminals the context read-out collapses to a bare token count
   // (`12k tok`) and the visual fill bar is dropped entirely.

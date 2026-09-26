@@ -19,6 +19,8 @@ from typing import Any, Dict, Optional
 _SB = "class:status-bar"
 _DIM = "class:status-bar-dim"
 _STRONG = "class:status-bar-strong"
+_DEFAULT_HIDDEN_STATUS_FIELDS = frozenset({"cache_hit", "latency", "tps"})
+
 _AGENT_COUNTERS = (
     "session_input_tokens", "session_output_tokens", "session_cache_read_tokens",
     "session_cache_write_tokens", "session_prompt_tokens", "session_completion_tokens",
@@ -187,7 +189,7 @@ class CLIStatusBarMixin:
         return f"✓ {format_duration_compact(max(0.0, time.time() - last_finished_at))}"
 
     def _get_status_bar_snapshot(self) -> Dict[str, Any]:
-        from cli import _reverse_alias_for_display, datetime, format_duration_compact
+        from cli import CLI_CONFIG, _reverse_alias_for_display, datetime, format_duration_compact
         agent = getattr(self, "agent", None)
         # Prefer the agent's model name — it updates on fallback; self.model never changes.
         model_name = (getattr(agent, "model", None) or self.model or "unknown")
@@ -203,6 +205,11 @@ class CLIStatusBarMixin:
             model_short = model_short[:-5]
         if len(model_short) > 26:
             model_short = f"{model_short[:23]}..."
+
+        effort = getattr(agent, "reasoning_effort", None)
+        if effort is None:
+            effort = (CLI_CONFIG.get("agent") or {}).get("reasoning_effort")
+        model_short = f"{model_short} {str(effort).strip() if effort else 'default'}"
 
         prompt_start = getattr(self, "_prompt_start_time", None)
         turn_live = prompt_start is not None
@@ -986,7 +993,7 @@ class CLIStatusBarMixin:
 
     def _get_status_bar_field_set(self) -> Optional[frozenset]:
         """Visible status-bar fields from ``display.status_bar.fields`` (module-level
-        ``CLI_CONFIG``; no per-render YAML parse). ``None`` = not customized, show everything.
+        ``CLI_CONFIG``; no per-render YAML parse). ``None`` = built-in defaults; performance read-outs stay hidden.
 
         Fields: model, context_detail, context_pct, cache_hit, latency, tps, compressions,
         bg_tasks, bg_processes, bg_subagents, goal, git_branch (opt-in only), duration,
@@ -1020,7 +1027,7 @@ class CLIStatusBarMixin:
         focus_label = snapshot.get("focus_label") or ""
 
         def _ok(name: str) -> bool:
-            return field_set is None or name in field_set
+            return name in field_set if field_set is not None else name not in _DEFAULT_HIDDEN_STATUS_FIELDS
 
         segs: list = []
 
